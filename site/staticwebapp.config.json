@@ -1,8 +1,5 @@
 {
   "$schema": "https://json.schemastore.org/staticwebapp.config.json",
-  "routes": [
-    { "route": "/.github/*", "statusCode": 404 }
-  ],
   "navigationFallback": {
     "rewrite": "/index.html",
     "exclude": ["/assets/*"]

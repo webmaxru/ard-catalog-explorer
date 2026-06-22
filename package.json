@@ -1,0 +1,11 @@
+{
+  "name": "ard-catalog-explorer",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Static explorer that fetches and strictly validates ARD ai-catalog.json manifests.",
+  "scripts": {
+    "test": "node --test"
+  },
+  "license": "MIT"
+}

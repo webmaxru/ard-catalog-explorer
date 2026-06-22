@@ -1,61 +1,74 @@
 # ARD Catalog Explorer
 
 A **static** single-page app that explores and **strictly validates** any
-[Agentic Resource Discovery (ARD)](https://github.com/ards-project) catalog.
+[Agentic Resource Discovery (ARD)](https://github.com/ards-project) catalog. Enter a hostname → it
+fetches `https://<host>/.well-known/ai-catalog.json` in your browser, lists the resources, and
+reports every deviation from the ARD specification with a concrete **suggested fix**. No backend.
 
-Enter a hostname → the app fetches `https://<host>/.well-known/ai-catalog.json` directly in
-your browser, lists the host and its resources, and reports every deviation from the ARD
-specification with a **concrete suggested fix**. It runs entirely client-side — no backend.
+**Live:** https://delightful-tree-0725d2503.7.azurestaticapps.net
 
-## Features
-- **Discover by hostname** — type `acme.com` (or a full catalog URL) and explore.
-- **Resource listing** — host info plus a card per entry: identifier, media type, endpoint
-  (`url`/inline `data`), description, tags, capabilities, representative queries, and trust manifest.
-- **Strict conformance** — full structural validation (JSON Schema rules) **plus** ARD semantic
-  rules: `urn:air:` format, the `urn:ai:`→`urn:air:` mistake, Strict Value-or-Reference, duplicate
-  identifiers, trust-domain alignment, HTTPS hygiene, the `localhost` anti-pattern, and more —
-  each with a suggested fix.
-- **Per-entry error/warning badges** and a filterable findings panel (ERROR / WARN / INFO).
-- **CORS-aware** — a conformant ARD catalog must send `Access-Control-Allow-Origin: *`; when a host
-  doesn't, the app explains why and offers a **paste-JSON** fallback.
-- **Built-in samples** (valid + broken) that work with no network.
-
-## Validation engine
-`assets/ard-validator.js` is a faithful browser port of the **ard-registry-builder** skill's
-`validate_catalog.py`. It emits the same finding `code`s and severities, verified for parity
-against the skill's templates and fixtures. The rules are documented in the skill's
-`references/validation-rules.md`.
-
-## Run locally
-It's plain static files — serve the folder any way you like:
-
-```bash
-# Azure Static Web Apps CLI (recommended; mirrors production)
-swa start .
-
-# or any static server
-npx --yes http-server . -p 8080
+## Repository layout
+```
+.
+├─ site/                       # the static web app (deployed; app_location = "site")
+│  ├─ index.html
+│  ├─ assets/{app.js, ard-validator.js, styles.css}
+│  └─ staticwebapp.config.json
+├─ infra/                      # Azure IaC (Bicep) + deploy / domain scripts  → see infra/README.md
+├─ tests/                      # self-contained unit tests for the validator
+├─ package.json                # `npm test` → node --test
+└─ .github/workflows/
+   ├─ deploy.yml               # test → deploy site to Azure Static Web Apps
+   └─ infra.yml                # provision/update Azure infrastructure (Bicep, via OIDC)
 ```
 
-Then open the printed URL. You can also deep-link: `?host=example.com`.
+The validation engine (`site/assets/ard-validator.js`) is a faithful browser port of the
+**ard-registry-builder** skill's `validate_catalog.py` — same finding codes and severities, plus a
+suggested fix per finding.
 
-## Deploy to Azure Static Web Apps (Free tier)
-
-### One-shot deploy from the CLI
+## Local development
 ```bash
-az group create -n rg-ard-explorer -l westeurope
-az staticwebapp create -n ard-catalog-explorer -g rg-ard-explorer -l westeurope --sku Free
-TOKEN=$(az staticwebapp secrets list -n ard-catalog-explorer -g rg-ard-explorer --query "properties.apiKey" -o tsv)
-swa deploy . --deployment-token "$TOKEN" --env production
+npm test                       # run the validator unit tests
+swa start ./site               # serve like production (Azure SWA CLI)
+# or: npx http-server ./site -p 8080
 ```
 
-### Continuous deployment (GitHub Actions)
-`.github/workflows/azure-static-web-apps.yml` deploys on every push to `main`. Add the deployment
-token as a repository secret named `AZURE_STATIC_WEB_APPS_API_TOKEN`:
+## Deploy
 
+### Infrastructure (once)
+See [`infra/README.md`](infra/README.md). In short:
 ```bash
-gh secret set AZURE_STATIC_WEB_APPS_API_TOKEN -b "$TOKEN"
+az login
+pwsh infra/deploy.ps1          # creates rg-ard-explorer + the Free Static Web App; prints the token
 ```
 
-The site is a no-build static app, so the workflow uses `skip_app_build: true` with
-`app_location: "/"`.
+### Content
+- **CI (recommended):** push to `main` → `deploy.yml` runs the tests, then deploys `site/`.
+- **Manual:** `swa deploy ./site --deployment-token <token> --env production`.
+
+## CI/CD
+
+`deploy.yml` (content) and `infra.yml` (infrastructure) form the pipeline.
+
+**Secrets / variables to configure** (`gh secret set <NAME> -R <owner/repo>`):
+
+| Name | Used by | Notes |
+| :-- | :-- | :-- |
+| `AZURE_STATIC_WEB_APPS_API_TOKEN` | `deploy.yml` | SWA deployment token (`infra/deploy.ps1` prints it). |
+| `AZURE_CLIENT_ID` | `infra.yml` | App registration (OIDC) client id. |
+| `AZURE_TENANT_ID` | `infra.yml` | Entra tenant id. |
+| `AZURE_SUBSCRIPTION_ID` | `infra.yml` | Target subscription. |
+
+`infra.yml` authenticates to Azure with **OIDC** (federated credentials — no stored Azure password).
+Create the identity once:
+```bash
+az ad app create --display-name ard-explorer-github-oidc
+# create a service principal, add a federated credential for
+#   subject: repo:<owner>/<repo>:ref:refs/heads/main
+# and grant it Contributor on rg-ard-explorer; then set the three AZURE_* secrets above.
+```
+
+## Custom domain
+`ard-explorer.isainative.dev` is bound via CNAME delegation. The DNS record lives in **Cloudflare**;
+the full, copy-pasteable steps (record values, the DNS-only/`.dev` HSTS caveats, and the bind
+command) are in [`infra/README.md`](infra/README.md#custom-domain-ard-explorerisainativedev).
