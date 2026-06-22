@@ -1,5 +1,8 @@
 {
   "$schema": "https://json.schemastore.org/staticwebapp.config.json",
+  "routes": [
+    { "route": "/.github/*", "statusCode": 404 }
+  ],
   "navigationFallback": {
     "rewrite": "/index.html",
     "exclude": ["/assets/*"]
@@ -11,11 +14,5 @@
     "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https:; connect-src 'self' https:; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "strict-origin-when-cross-origin"
-  },
-  "responseOverrides": {
-    "404": {
-      "rewrite": "/index.html",
-      "statusCode": 200
-    }
   }
 }
