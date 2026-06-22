@@ -3,51 +3,75 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ARD Catalog Explorer</title>
-  <meta name="description" content="Explore and strictly validate any Agentic Resource Discovery (ARD) ai-catalog.json. Enter a hostname; the explorer fetches its /.well-known/ai-catalog.json, lists the resources, and reports spec violations with suggested fixes." />
+  <meta name="color-scheme" content="dark" />
+  <title>ARD Explorer — well-known conformance probe</title>
+  <meta name="description" content="Probe any Agentic Resource Discovery (ARD) host. Enter a hostname and the explorer fetches its /.well-known/ai-catalog.json in your browser, lists the agentic resources, and reports every spec deviation with a concrete fix. No backend." />
   <link rel="stylesheet" href="./assets/styles.css" />
 </head>
 <body>
-  <header class="site-header">
-    <div class="wrap header-inner">
-      <div class="brand">
-        <span class="brand-mark" aria-hidden="true">◇</span>
-        <div>
-          <h1>ARD Catalog Explorer</h1>
-          <p class="tagline">Fetch, list &amp; strictly validate any <code>/.well-known/ai-catalog.json</code></p>
-        </div>
-      </div>
-      <a class="spec-link" href="https://github.com/ards-project" target="_blank" rel="noopener noreferrer">ARD spec ↗</a>
+  <header class="console-bar">
+    <div class="wrap bar-inner">
+      <a class="brand" href="./" aria-label="ARD Explorer home">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span class="brand-word">ard<span class="brand-sep">·</span>explorer</span>
+      </a>
+      <p class="bar-tag">Well-known conformance probe</p>
+      <nav class="bar-links" aria-label="Project links">
+        <a class="bar-pitch" href="https://github.com/webmaxru/ai-native-dev" target="_blank" rel="noopener noreferrer" title="Built with the ard-registry-builder skill">
+          <span class="pitch-mark" aria-hidden="true"></span>
+          <span class="pitch-text">Built with <strong>ard-registry-builder</strong></span>
+          <span class="pitch-arrow" aria-hidden="true">↗</span>
+        </a>
+        <a class="bar-link" href="https://github.com/ards-project" target="_blank" rel="noopener noreferrer">Spec&nbsp;<span aria-hidden="true">↗</span></a>
+      </nav>
     </div>
   </header>
 
   <main class="wrap">
-    <section class="search">
-      <form id="explore-form" autocomplete="off">
+    <!-- Probe console: the hero is the instrument's input + pipeline -->
+    <section class="console" aria-labelledby="console-eyebrow">
+      <p class="eyebrow" id="console-eyebrow">Probe a host</p>
+      <form id="explore-form" class="probe-form" autocomplete="off">
         <label for="host-input" class="visually-hidden">Hostname or catalog URL</label>
-        <div class="search-row">
+        <div class="probe-field">
+          <span class="field-scheme" aria-hidden="true">https://</span>
           <input id="host-input" type="text" inputmode="url" spellcheck="false"
-                 placeholder="example.com  ·  acme.com  ·  https://host/.well-known/ai-catalog.json" />
-          <button id="explore-btn" type="submit">Explore</button>
+                 placeholder="example.com  —  or a full /.well-known/ai-catalog.json URL" />
+          <button id="explore-btn" type="submit">
+            <span class="btn-label">Probe</span>
+            <span class="btn-caret" aria-hidden="true">▸</span>
+          </button>
         </div>
-        <p class="hint">The explorer requests <code>https://&lt;host&gt;/.well-known/ai-catalog.json</code> from your browser.</p>
       </form>
+      <p class="hint">Fetches <code>https://&lt;host&gt;/.well-known/ai-catalog.json</code> straight from your browser — no server, no logging.</p>
 
       <div class="examples">
-        <span class="examples-label">Try:</span>
-        <button class="chip" data-example="cisco" type="button">ai-catalog.outshift.io</button>
-        <button class="chip" data-sample="valid" type="button">Sample: valid catalog</button>
-        <button class="chip" data-sample="broken" type="button">Sample: broken catalog</button>
-        <button class="chip ghost" id="toggle-paste" type="button" aria-expanded="false">Paste JSON…</button>
+        <span class="examples-label">Try</span>
+        <button class="chip" data-example="webmaxru.github.io/ai-native-dev/.well-known/ai-catalog.json" type="button">webmaxru.github.io/ai-native-dev</button>
+        <button class="chip" data-sample="valid" type="button">Valid sample</button>
+        <button class="chip" data-sample="broken" type="button">Broken sample</button>
+        <button class="chip chip-ghost" id="toggle-paste" type="button" aria-expanded="false" aria-controls="paste-section">Paste JSON</button>
       </div>
 
       <div id="paste-section" class="paste hidden">
-        <textarea id="paste-input" rows="9" spellcheck="false"
-                  placeholder='Paste an ai-catalog.json document here (useful when a host has no CORS header).'></textarea>
-        <button id="paste-btn" type="button">Validate pasted JSON</button>
+        <textarea id="paste-input" rows="8" spellcheck="false"
+                  placeholder='Paste an ai-catalog.json document here — handy when a host sends no CORS header.'></textarea>
+        <button id="paste-btn" type="button">Validate JSON</button>
       </div>
     </section>
 
+    <!-- SIGNATURE: the probe trace pipeline, visible on load (idle), illuminates on result -->
+    <section class="trace-panel" aria-label="Probe pipeline">
+      <ol id="probe-trace" class="trace">
+        <li class="stage" id="stage-reach"><span class="lamp" aria-hidden="true"></span><span class="stage-label">Reach</span><span class="stage-note"></span></li>
+        <li class="stage" id="stage-fetch"><span class="lamp" aria-hidden="true"></span><span class="stage-label">Fetch</span><span class="stage-note"></span></li>
+        <li class="stage" id="stage-parse"><span class="lamp" aria-hidden="true"></span><span class="stage-label">Parse</span><span class="stage-note"></span></li>
+        <li class="stage" id="stage-validate"><span class="lamp" aria-hidden="true"></span><span class="stage-label">Validate</span><span class="stage-note"></span></li>
+        <li class="stage stage-verdict" id="stage-verdict"><span class="lamp" aria-hidden="true"></span><span class="stage-label">Verdict</span><span class="stage-note"></span></li>
+      </ol>
+    </section>
+
+    <!-- Worded verdict readout -->
     <section id="status" class="status hidden" aria-live="polite">
       <div class="status-head">
         <span id="status-spinner" class="spinner hidden" aria-hidden="true"></span>
@@ -58,32 +82,38 @@
     </section>
 
     <section id="host-section" class="panel hidden">
-      <h2>Host</h2>
+      <h2 class="panel-title">Host</h2>
       <div id="host-card" class="host-card"></div>
     </section>
 
     <section id="entries-section" class="panel hidden">
       <div class="panel-head">
-        <h2>Resources <span id="entries-count" class="muted"></span></h2>
+        <h2 class="panel-title">Resources <span id="entries-count" class="muted"></span></h2>
       </div>
       <div id="entries-grid" class="entries-grid"></div>
-      <p id="entries-empty" class="empty hidden">This catalog has no entries.</p>
+      <p id="entries-empty" class="empty hidden">This catalog advertises no resources.</p>
     </section>
 
     <section id="findings-section" class="panel hidden">
       <div class="panel-head">
-        <h2>Conformance findings</h2>
+        <h2 class="panel-title">Findings</h2>
         <div class="filters" id="finding-filters"></div>
       </div>
       <div id="findings-list" class="findings-list"></div>
-      <p id="findings-empty" class="empty ok hidden">No issues found — this catalog strictly follows the specification. 🎉</p>
+      <p id="findings-empty" class="empty ok hidden">Clean readout — this catalog strictly conforms to the specification. ✓</p>
     </section>
   </main>
 
   <footer class="site-footer">
-    <div class="wrap">
-      <p>Static explorer · validation rules ported from the <strong>ard-registry-builder</strong> skill ·
-        runs entirely in your browser.</p>
+    <div class="wrap footer-inner">
+      <p class="footer-note">Runs entirely in your browser. Validation rules ported from the <strong>ard-registry-builder</strong> skill. No backend, no tracking.</p>
+      <p class="footer-credit">
+        <span class="footer-made">Made in Norway <svg class="flag" viewBox="0 0 22 16" aria-hidden="true"><rect width="22" height="16" fill="#ba0c2f"/><rect x="6" width="4" height="16" fill="#fff"/><rect y="6" width="22" height="4" fill="#fff"/><rect x="7" width="2" height="16" fill="#00205b"/><rect y="7" width="22" height="2" fill="#00205b"/></svg> by <strong>Maxim Salnikov</strong></span>
+        <span class="footer-links">
+          <a href="https://www.linkedin.com/in/webmaxru/" target="_blank" rel="noopener noreferrer">LinkedIn&nbsp;<span aria-hidden="true">↗</span></a>
+          <a href="https://github.com/webmaxru/ard-catalog-explorer" target="_blank" rel="noopener noreferrer">GitHub&nbsp;<span aria-hidden="true">↗</span></a>
+        </span>
+      </p>
     </div>
   </footer>
 

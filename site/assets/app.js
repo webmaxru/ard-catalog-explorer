@@ -9,6 +9,16 @@ const refs = {
   hostSection: $("host-section"), hostCard: $("host-card"),
   entriesSection: $("entries-section"), entriesGrid: $("entries-grid"), entriesCount: $("entries-count"), entriesEmpty: $("entries-empty"),
   findingsSection: $("findings-section"), findingsList: $("findings-list"), findingsEmpty: $("findings-empty"), filters: $("finding-filters"),
+  probeTrace: $("probe-trace"),
+};
+
+// Stage element refs for the probe-trace pipeline
+const stageEls = {
+  reach:    $("stage-reach"),
+  fetch:    $("stage-fetch"),
+  parse:    $("stage-parse"),
+  validate: $("stage-validate"),
+  verdict:  $("stage-verdict"),
 };
 
 // ---------- tiny DOM helper (textContent-only => XSS-safe with remote data) ----------
@@ -84,14 +94,27 @@ async function fetchCatalog(url) {
 // ---------- render ----------
 const LEVEL_CLASS = { ERROR: "error", WARN: "warn", INFO: "info" };
 
+// Explicitly show the final URL we fetched — important when the user typed only a host
+// and we resolved the scheme + /.well-known/ai-catalog.json path for them.
+function renderSource(label) {
+  clear(refs.source);
+  if (!label) return;
+  if (/^https?:\/\//i.test(label)) {
+    refs.source.appendChild(el("span", { class: "source-method", text: "GET" }));
+    refs.source.appendChild(el("code", { text: label }));
+  } else {
+    refs.source.appendChild(el("code", { text: label }));
+  }
+}
+
 function setStatus({ loading = false, sourceLabel = "", combined = null, hasDoc = true } = {}) {
   refs.status.classList.remove("hidden");
   refs.spinner.classList.toggle("hidden", !loading);
   clear(refs.counts);
   if (loading) {
     refs.verdict.className = "verdict";
-    refs.verdict.textContent = "Fetching…";
-    refs.source.textContent = sourceLabel;
+    refs.verdict.textContent = "Probing…";
+    renderSource(sourceLabel);
     return;
   }
   const c = combined.counts;
@@ -112,7 +135,7 @@ function setStatus({ loading = false, sourceLabel = "", combined = null, hasDoc 
   [mk(c.error, "error", "error"), mk(c.warning, "warn", "warning"), mk(c.info, "info", "info"),
    (c.error + c.warning + c.info === 0 && hasDoc) ? el("span", { class: "badge ok", text: "0 issues" }) : null]
     .filter(Boolean).forEach((b) => refs.counts.appendChild(b));
-  refs.source.appendChild(el("span", {}, sourceLabel ? [el("code", { text: sourceLabel })] : []));
+  renderSource(sourceLabel);
 }
 
 function renderHost(host) {
@@ -271,9 +294,120 @@ function combine(transportFindings, validatorResult) {
   return { findings, counts, ok: counts.error === 0 };
 }
 
-function showResult(doc, transportFindings, sourceLabel) {
+// ---------- probe trace ----------
+const TRACE_STATES = ["is-idle", "is-active", "is-pass", "is-warn", "is-fail", "is-skip"];
+
+// Apply a state object {reach,fetch,parse,validate,verdict} → {state,note} to the DOM.
+function renderTrace(stageStates) {
+  for (const [name, stageEl] of Object.entries(stageEls)) {
+    const { state, note = "" } = stageStates[name] || { state: "is-idle" };
+    TRACE_STATES.forEach((cls) => stageEl.classList.remove(cls));
+    stageEl.classList.add(state);
+    const noteEl = stageEl.querySelector(".stage-note");
+    if (noteEl) noteEl.textContent = note;
+  }
+}
+
+// Derive trace stage states from transport findings + validator result.
+// mode: "network" | "paste" | "sample"
+function computeTraceStates(transportFindings, validatorResult, doc, mode, hostNote) {
+  const hasFetchFailed = transportFindings.some((f) => f.code === "fetch-failed");
+  const hasHttpStatus  = transportFindings.some((f) => f.code === "http-status");
+  const hasContentType = transportFindings.some((f) => f.code === "content-type");
+  const hasInvalidJson = transportFindings.some((f) => f.code === "invalid-json");
+  const st = {};
+
+  if (mode === "paste" || mode === "sample") {
+    // No network stages for local inputs.
+    st.reach = { state: "is-skip", note: "local" };
+    st.fetch = { state: "is-skip", note: "local" };
+    st.parse = mode === "sample"
+      ? { state: "is-pass", note: "local" }   // already a parsed object
+      : (hasInvalidJson
+          ? { state: "is-fail", note: "—" }
+          : { state: "is-pass", note: "json" });
+  } else {
+    // Network: REACH
+    st.reach = hasFetchFailed
+      ? { state: "is-fail", note: "no route" }
+      : { state: "is-pass", note: hostNote || "" };
+
+    // Network: FETCH (skip if reach failed)
+    if (hasFetchFailed) {
+      st.fetch = { state: "is-skip", note: "" };
+    } else if (hasHttpStatus) {
+      const m = transportFindings.find((f) => f.code === "http-status");
+      const match = m && m.message.match(/HTTP (\d+)/);
+      st.fetch = { state: "is-fail", note: match ? match[1] : "err" };
+    } else if (hasContentType) {
+      st.fetch = { state: "is-warn", note: "json" };
+    } else {
+      st.fetch = { state: "is-pass", note: "ok" };
+    }
+
+    // Network: PARSE (skip if reach or fetch failed)
+    const reachFail = st.reach.state === "is-fail";
+    const fetchFail = st.fetch.state === "is-fail";
+    if (reachFail || fetchFail) {
+      st.parse = { state: "is-skip", note: "" };
+    } else if (hasInvalidJson || doc === null) {
+      st.parse = { state: "is-fail", note: "—" };
+    } else {
+      st.parse = { state: "is-pass", note: "json" };
+    }
+  }
+
+  // VALIDATE: skip if no doc or parse failed
+  const parseFail = st.parse.state === "is-fail";
+  if (!validatorResult || doc === null || parseFail) {
+    st.validate = { state: "is-skip", note: "" };
+  } else {
+    const errs  = validatorResult.findings.filter((f) => f.level === "ERROR").length;
+    const warns = validatorResult.findings.filter((f) => f.level === "WARN").length;
+    if (errs > 0) {
+      st.validate = { state: "is-fail", note: `${errs} error${errs > 1 ? "s" : ""}` };
+    } else if (warns > 0) {
+      st.validate = { state: "is-warn", note: `${warns} warning${warns > 1 ? "s" : ""}` };
+    } else {
+      st.validate = { state: "is-pass", note: "clean" };
+    }
+  }
+
+  // VERDICT: overall pass/warn/fail
+  const allFindings = transportFindings.concat(validatorResult ? validatorResult.findings : []);
+  const totalErrors = allFindings.filter((f) => f.level === "ERROR").length;
+  const totalWarns  = allFindings.filter((f) => f.level === "WARN").length;
+  if (totalErrors > 0 || doc === null) {
+    st.verdict = { state: "is-fail", note: "" };
+  } else if (totalWarns > 0) {
+    st.verdict = { state: "is-warn", note: "" };
+  } else {
+    st.verdict = { state: "is-pass", note: "" };
+  }
+
+  return st;
+}
+
+// Called at the start of a network probe: animate all stages as active.
+function setTraceLoading() {
+  refs.probeTrace.classList.remove("is-live");
+  refs.probeTrace.classList.add("is-probing");
+  renderTrace({
+    reach:    { state: "is-active", note: "" },
+    fetch:    { state: "is-active", note: "" },
+    parse:    { state: "is-active", note: "" },
+    validate: { state: "is-active", note: "" },
+    verdict:  { state: "is-idle",   note: "" },
+  });
+}
+
+function showResult(doc, transportFindings, sourceLabel, traceMode = "network", hostNote = "") {
   const result = doc ? validateCatalog(doc) : null;
   const combined = combine(transportFindings, result);
+  const traceStates = computeTraceStates(transportFindings, result, doc, traceMode, hostNote);
+  refs.probeTrace.classList.remove("is-probing");
+  refs.probeTrace.classList.add("is-live");
+  renderTrace(traceStates);
   setStatus({ loading: false, sourceLabel, combined, hasDoc: !!doc });
   if (doc) {
     renderHost(doc.host);
@@ -294,11 +428,15 @@ async function explore(rawInput) {
   if (!url) { refs.host.focus(); return; }
   refs.exploreBtn.disabled = true;
   setStatus({ loading: true, sourceLabel: url });
+  setTraceLoading();
+  let hostNote = "";
+  try { hostNote = new URL(url).hostname; } catch { /* ignored */ }
   try {
     const { doc, findings } = await fetchCatalog(url);
-    showResult(doc, findings, url);
+    showResult(doc, findings, url, "network", hostNote);
   } finally {
     refs.exploreBtn.disabled = false;
+    refs.probeTrace.classList.remove("is-probing"); // safety: clear if showResult threw
   }
 }
 
@@ -309,10 +447,10 @@ function validatePasted() {
   try { doc = JSON.parse(text); }
   catch (e) {
     showResult(null, [tf("ERROR", "invalid-json", `The pasted text is not valid JSON: ${e.message}`,
-      "Fix the JSON syntax and try again.")], "pasted JSON");
+      "Fix the JSON syntax and try again.")], "pasted JSON", "paste");
     return;
   }
-  showResult(doc, [], "pasted JSON");
+  showResult(doc, [], "pasted JSON", "paste");
 }
 
 function openPaste(force) {
@@ -358,14 +496,14 @@ refs.togglePaste.addEventListener("click", () => openPaste(false));
 document.querySelectorAll("[data-sample]").forEach((btn) => {
   btn.addEventListener("click", () => {
     const sample = btn.dataset.sample === "valid" ? SAMPLE_VALID : SAMPLE_BROKEN;
-    showResult(structuredClone(sample), [], `sample: ${btn.dataset.sample} catalog (no network)`);
+    showResult(structuredClone(sample), [], `sample: ${btn.dataset.sample} catalog (no network)`, "sample");
   });
 });
 document.querySelectorAll("[data-example]").forEach((btn) => {
   btn.addEventListener("click", () => {
-    const host = "ai-catalog.outshift.io";
-    refs.host.value = host;
-    explore(host);
+    const target = btn.dataset.example;
+    refs.host.value = target;
+    explore(target);
   });
 });
 
