@@ -37,6 +37,15 @@ param tags object = {
   managedBy: 'bicep'
 }
 
+@description('Log Analytics workspace backing Application Insights.')
+param logAnalyticsName string = 'log-ard-explorer'
+
+@description('Application Insights component name (workspace-based).')
+param appInsightsName string = 'appi-ard-explorer'
+
+@description('Daily ingestion cap in GB. Keeps usage within the 5 GB/month free grant.')
+param dailyQuotaGb string = '0.5'
+
 resource staticSite 'Microsoft.Web/staticSites@2024-04-01' = {
   name: name
   location: location
@@ -63,6 +72,37 @@ resource domain 'Microsoft.Web/staticSites/customDomains@2024-04-01' = if (!empt
   }
 }
 
+// --- Telemetry: workspace-based Application Insights (free grant; cookieless client) ---
+@description('Log Analytics workspace backing Application Insights.')
+resource logws 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
+  name: logAnalyticsName
+  location: location
+  tags: tags
+  properties: {
+    sku: {
+      name: 'PerGB2018'
+    }
+    retentionInDays: 30
+    workspaceCapping: {
+      dailyQuotaGb: json(dailyQuotaGb)
+    }
+  }
+}
+
+@description('Application Insights for anonymous, cookieless usage analytics. IP masking stays ON.')
+resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
+  name: appInsightsName
+  location: location
+  kind: 'web'
+  tags: tags
+  properties: {
+    Application_Type: 'web'
+    WorkspaceResourceId: logws.id
+    IngestionMode: 'LogAnalytics'
+    DisableIpMasking: false
+  }
+}
+
 @description('The Azure-assigned default hostname. Point your Cloudflare CNAME at this value.')
 output defaultHostname string = staticSite.properties.defaultHostname
 
@@ -71,3 +111,6 @@ output staticWebAppName string = staticSite.name
 
 @description('The custom domain that was bound (or "none").')
 output customDomainBound string = empty(customDomain) ? 'none' : customDomain
+
+@description('App Insights connection string (client-side ingestion identifier; not a secret).')
+output appInsightsConnectionString string = appInsights.properties.ConnectionString
