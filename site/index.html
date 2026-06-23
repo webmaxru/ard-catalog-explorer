@@ -4,8 +4,57 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="color-scheme" content="dark" />
-  <title>ARD Explorer — well-known conformance probe</title>
-  <meta name="description" content="Probe any Agentic Resource Discovery (ARD) host. Enter a hostname and the explorer fetches its /.well-known/ai-catalog.json in your browser, lists the agentic resources, and reports every spec deviation with a concrete fix. No backend." />
+  <title>ARD Explorer — validate any ai-catalog.json</title>
+  <meta name="description" content="Validate any Agentic Resource Discovery (ARD) catalog: fetch a host's /.well-known/ai-catalog.json in your browser and see every spec deviation, with fixes." />
+  <meta name="author" content="Maxim Salnikov" />
+  <meta name="application-name" content="ARD Explorer" />
+  <meta name="theme-color" content="#0A1416" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <meta name="keywords" content="ARD, Agentic Resource Discovery, ai-catalog.json, well-known, MCP server, A2A agent, agent catalog, validator, conformance" />
+  <link rel="canonical" href="https://ard-explorer.isainative.dev/" />
+
+  <link rel="icon" href="/favicon.ico" sizes="32x32" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="ARD Explorer" />
+  <meta property="og:title" content="ARD Explorer — validate any ai-catalog.json" />
+  <meta property="og:description" content="Fetch a host's /.well-known/ai-catalog.json in your browser, list its agentic resources, and see every Agentic Resource Discovery spec deviation — with a concrete fix for each." />
+  <meta property="og:url" content="https://ard-explorer.isainative.dev/" />
+  <meta property="og:image" content="https://ard-explorer.isainative.dev/assets/og-image.png" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="ARD Explorer — fetch, list and strictly validate Agentic Resource Discovery catalogs" />
+  <meta property="og:locale" content="en_US" />
+
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="ARD Explorer — validate any ai-catalog.json" />
+  <meta name="twitter:description" content="Fetch a host's /.well-known/ai-catalog.json in your browser and see every Agentic Resource Discovery spec deviation, with fixes." />
+  <meta name="twitter:image" content="https://ard-explorer.isainative.dev/assets/og-image.png" />
+  <meta name="twitter:image:alt" content="ARD Explorer — strictly validate Agentic Resource Discovery catalogs" />
+  <meta name="twitter:creator" content="@webmaxru" />
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "ARD Explorer",
+    "alternateName": "ARD Catalog Explorer",
+    "url": "https://ard-explorer.isainative.dev/",
+    "description": "A static, browser-only tool that fetches and strictly validates Agentic Resource Discovery (ARD) ai-catalog.json manifests, reporting every spec deviation with a concrete fix.",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Any (web browser)",
+    "browserRequirements": "Requires JavaScript",
+    "isAccessibleForFree": true,
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "author": { "@type": "Person", "name": "Maxim Salnikov", "url": "https://www.linkedin.com/in/webmaxru/" },
+    "keywords": "ARD, Agentic Resource Discovery, ai-catalog.json, well-known, MCP, A2A, agent catalog, validator"
+  }
+  </script>
+
   <link rel="stylesheet" href="./assets/styles.css" />
 </head>
 <body>
@@ -17,12 +66,12 @@
       </a>
       <p class="bar-tag">Well-known conformance probe</p>
       <nav class="bar-links" aria-label="Project links">
-        <a class="bar-pitch" href="https://github.com/webmaxru/ai-native-dev" target="_blank" rel="noopener noreferrer" title="Built with the ard-registry-builder skill">
+        <a class="bar-pitch" href="https://github.com/webmaxru/ai-native-dev" target="_blank" rel="noopener noreferrer" data-track="pitch" title="Built with the ard-registry-builder skill">
           <span class="pitch-mark" aria-hidden="true"></span>
           <span class="pitch-text">Built with <strong>ard-registry-builder</strong></span>
           <span class="pitch-arrow" aria-hidden="true">↗</span>
         </a>
-        <a class="bar-link" href="https://github.com/ards-project" target="_blank" rel="noopener noreferrer">Spec&nbsp;<span aria-hidden="true">↗</span></a>
+        <a class="bar-link" href="https://github.com/ards-project" target="_blank" rel="noopener noreferrer" data-track="spec">Spec&nbsp;<span aria-hidden="true">↗</span></a>
       </nav>
     </div>
   </header>
@@ -43,7 +92,7 @@
           </button>
         </div>
       </form>
-      <p class="hint">Reads <code>https://&lt;host&gt;/.well-known/ai-catalog.json</code> in your browser — no server, no logging.</p>
+      <p class="hint">Reads <code>https://&lt;host&gt;/.well-known/ai-catalog.json</code> straight from your browser — we never see the catalog or the host you enter.</p>
       <div class="disc-note">
         <p class="disc-lead">That Well-Known URI is the spec's primary discovery path. ARD also lets a publisher point to a catalog elsewhere — this explorer <strong>doesn't follow these</strong>:</p>
         <ul>
@@ -114,12 +163,12 @@
 
   <footer class="site-footer">
     <div class="wrap footer-inner">
-      <p class="footer-note">Runs entirely in your browser. Validation rules ported from the <strong>ard-registry-builder</strong> skill. No backend, no tracking.</p>
+      <p class="footer-note">Runs in your browser. Validation rules ported from the <strong>ard-registry-builder</strong> skill. No backend; anonymous, cookieless analytics only — no cookies, no personal data.</p>
       <p class="footer-credit">
         <span class="footer-made">Made in Norway <svg class="flag" viewBox="0 0 22 16" aria-hidden="true"><rect width="22" height="16" fill="#ba0c2f"/><rect x="6" width="4" height="16" fill="#fff"/><rect y="6" width="22" height="4" fill="#fff"/><rect x="7" width="2" height="16" fill="#00205b"/><rect y="7" width="22" height="2" fill="#00205b"/></svg> by <strong>Maxim Salnikov</strong></span>
         <span class="footer-links">
-          <a href="https://www.linkedin.com/in/webmaxru/" target="_blank" rel="noopener noreferrer">LinkedIn&nbsp;<span aria-hidden="true">↗</span></a>
-          <a href="https://github.com/webmaxru/ard-catalog-explorer" target="_blank" rel="noopener noreferrer">GitHub&nbsp;<span aria-hidden="true">↗</span></a>
+          <a href="https://www.linkedin.com/in/webmaxru/" target="_blank" rel="noopener noreferrer" data-track="linkedin">LinkedIn&nbsp;<span aria-hidden="true">↗</span></a>
+          <a href="https://github.com/webmaxru/ard-catalog-explorer" target="_blank" rel="noopener noreferrer" data-track="github">GitHub&nbsp;<span aria-hidden="true">↗</span></a>
         </span>
       </p>
     </div>

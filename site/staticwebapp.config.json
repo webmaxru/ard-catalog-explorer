@@ -2,10 +2,11 @@
   "$schema": "https://json.schemastore.org/staticwebapp.config.json",
   "navigationFallback": {
     "rewrite": "/index.html",
-    "exclude": ["/assets/*"]
+    "exclude": ["/assets/*", "/*.{ico,png,svg,xml,txt,webmanifest}"]
   },
   "mimeTypes": {
-    ".json": "application/json"
+    ".json": "application/json",
+    ".webmanifest": "application/manifest+json"
   },
   "globalHeaders": {
     "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https:; connect-src 'self' https:; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",

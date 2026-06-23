@@ -1,5 +1,6 @@
 // app.js — ARD Catalog Explorer orchestration (fetch, CORS handling, render).
 import { validateCatalog } from "./ard-validator.js";
+import { trackEvent, trackPageView } from "./analytics.js";
 
 const $ = (id) => document.getElementById(id);
 const refs = {
@@ -255,6 +256,7 @@ function renderFindings(findings) {
     btn.addEventListener("click", () => {
       activeFilters[level] = !activeFilters[level];
       btn.setAttribute("aria-pressed", String(activeFilters[level]));
+      trackEvent("filter_toggle", { level, pressed: String(activeFilters[level]) });
       paint();
     });
     refs.filters.appendChild(btn);
@@ -419,6 +421,11 @@ function showResult(doc, transportFindings, sourceLabel, traceMode = "network", 
     openPaste(true);
   }
   renderFindings(combined.findings);
+  const outcome = !doc ? "unreadable"
+    : combined.counts.error > 0 ? "not_conformant"
+    : combined.counts.warning > 0 ? "warnings"
+    : "conformant";
+  trackEvent("probe_result", { outcome, source: traceMode });
   refs.status.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
@@ -429,6 +436,7 @@ async function explore(rawInput) {
   refs.exploreBtn.disabled = true;
   setStatus({ loading: true, sourceLabel: url });
   setTraceLoading();
+  trackEvent("probe_submit", { source: "network" });
   let hostNote = "";
   try { hostNote = new URL(url).hostname; } catch { /* ignored */ }
   try {
@@ -492,21 +500,34 @@ const SAMPLE_BROKEN = {
 // ---------- wire up ----------
 refs.form.addEventListener("submit", (e) => { e.preventDefault(); explore(refs.host.value); });
 refs.pasteBtn.addEventListener("click", validatePasted);
-refs.togglePaste.addEventListener("click", () => openPaste(false));
+refs.togglePaste.addEventListener("click", () => {
+  const willOpen = refs.pasteSection.classList.contains("hidden");
+  openPaste(false);
+  if (willOpen) trackEvent("paste_open");
+});
 document.querySelectorAll("[data-sample]").forEach((btn) => {
   btn.addEventListener("click", () => {
     const sample = btn.dataset.sample === "valid" ? SAMPLE_VALID : SAMPLE_BROKEN;
+    trackEvent("sample_click", { which: btn.dataset.sample });
     showResult(structuredClone(sample), [], `sample: ${btn.dataset.sample} catalog (no network)`, "sample");
   });
 });
 document.querySelectorAll("[data-example]").forEach((btn) => {
   btn.addEventListener("click", () => {
     const target = btn.dataset.example;
+    trackEvent("example_click");
     refs.host.value = target;
     explore(target);
   });
 });
 
+// outbound link tracking (anonymous: only which link was clicked, never any URL)
+document.querySelectorAll("[data-track]").forEach((a) => {
+  a.addEventListener("click", () => trackEvent("outbound_click", { which: a.dataset.track }));
+});
+
 // deep link: ?host=example.com
 const params = new URLSearchParams(location.search);
 if (params.get("host")) { refs.host.value = params.get("host"); explore(params.get("host")); }
+
+trackPageView();
