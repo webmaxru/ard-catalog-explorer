@@ -43,7 +43,15 @@
           </button>
         </div>
       </form>
-      <p class="hint">Fetches <code>https://&lt;host&gt;/.well-known/ai-catalog.json</code> straight from your browser — no server, no logging.</p>
+      <p class="hint">Reads <code>https://&lt;host&gt;/.well-known/ai-catalog.json</code> in your browser — no server, no logging.</p>
+      <div class="disc-note">
+        <p class="disc-lead">That Well-Known URI is the spec's primary discovery path. ARD also lets a publisher point to a catalog elsewhere — this explorer <strong>doesn't follow these</strong>:</p>
+        <ul>
+          <li><strong>robots.txt</strong> — an <code>Agentmap:</code> directive, e.g. <code>Agentmap: https://example.com/catalog.json</code></li>
+          <li><strong>HTML link tag</strong> — <code>&lt;link rel="ai-catalog" href="…"&gt;</code> in the page <code>&lt;head&gt;</code></li>
+        </ul>
+        <p class="disc-foot">Catalog advertised that way (and not at the well-known path)? Paste its full URL in the box above, or use <strong>Paste JSON</strong>.</p>
+      </div>
 
       <div class="examples">
         <span class="examples-label">Try</span>

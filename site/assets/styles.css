@@ -126,6 +126,16 @@ code{font-family:var(--mono); font-size:.86em}
 
 .hint{margin:14px 2px 0; font-size:.86rem; color:var(--ink-dim)}
 .hint code{color:var(--ink); background:var(--surface-2); padding:.12em .45em; border-radius:4px; border:1px solid var(--line-soft)}
+.disc-note{margin-top:13px; padding:13px 15px; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); font-size:.83rem; line-height:1.55; color:var(--ink-dim)}
+.disc-note p{margin:0}
+.disc-lead strong{color:var(--ink); font-weight:600}
+.disc-note ul{list-style:none; margin:9px 0; padding:0; display:grid; gap:7px}
+.disc-note li{padding-left:15px; position:relative}
+.disc-note li::before{content:""; position:absolute; left:0; top:.62em; width:5px; height:5px; border-radius:50%; background:var(--brand)}
+.disc-note li strong{color:var(--ink); font-weight:600}
+.disc-foot{margin-top:10px; color:var(--ink-faint)}
+.disc-foot strong{color:var(--ink-dim); font-weight:600}
+.disc-note code{color:var(--brand-bright); background:var(--surface-2); padding:.12em .42em; border-radius:4px; border:1px solid var(--line-soft); word-break:break-word}
 
 .examples{display:flex; flex-wrap:wrap; align-items:center; gap:9px; margin-top:22px}
 .examples-label{font:500 var(--label)/1 var(--mono); text-transform:uppercase; letter-spacing:.16em; color:var(--ink-faint); margin-right:2px}
